@@ -1,0 +1,8 @@
+AFLplusplus
+png_gen.o.dSYM
+TerminalImageViewer
+example.c
+not_kitty_alpha.png
+*.o
+test.c
+.vscode
