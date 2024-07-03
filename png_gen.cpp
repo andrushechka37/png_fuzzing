@@ -1,12 +1,11 @@
-#include <stdio.h>
+#include <cstdio>
+#include <cstring>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/_types/_size_t.h>
 
 unsigned long crc(unsigned char *buf, int len);
-
-// free
-// code clean 
 
 const int IHDR_LENGTH = 13;
 const int START_LEN = 100;
@@ -18,7 +17,12 @@ struct chunk {
     char * data; 
 };
 
-void print_number(unsigned long number, FILE * file) {
+struct png_buffer {
+     unsigned char * data;
+    size_t len;
+};
+
+void print_number(unsigned long number, png_buffer * buffer) {
 
     unsigned char array[4];
     array[0] = (number >> 24) & 0xFF;
@@ -27,39 +31,48 @@ void print_number(unsigned long number, FILE * file) {
     array[3] = number & 0xFF;
 
     for (int i = 0; i < 4; i++) {
-        fprintf(file, "%c", array[i]);
+        buffer->data[buffer->len] = array[i];
+        buffer->len++;
     }
+
+
 }
 
-void write_chunk(FILE * pfile, chunk * chunk) {
+void write_chunk(chunk * chunk, png_buffer * buffer) {
 
-    print_number(chunk->length, pfile);              // len
-    fwrite(chunk->type, sizeof(char), 4, pfile);     // type
+    buffer->data = (unsigned char *) realloc(buffer->data, buffer->len + chunk->length + 15);
+    print_number(chunk->length, buffer);              // len
+    memcpy(&(buffer->data[buffer->len]), chunk->type, 4);   //
+    buffer->len += 4;                                       // type
 
-    char * hash_str = NULL;                                                         //
-    if (chunk->data == NULL) {                                                      //
-        hash_str = (char *)calloc(START_LEN, sizeof(char));                         //
+    char * hash_str = NULL;                                                         
+    if (chunk->data == NULL) {                                                      
+        hash_str = (char *) calloc(START_LEN, sizeof(char));                         
     } else {                                                                        // data
-        fwrite(chunk->data, sizeof(char), chunk->length, pfile);                    //
-        hash_str = (char *)calloc(chunk->length + START_LEN, sizeof(char));         //
-    }                                                                               //
+        memcpy(&(buffer->data[buffer->len]), chunk->data, chunk->length);
+        buffer->len += chunk->length;
+        hash_str = (char *) calloc(chunk->length + START_LEN, sizeof(char));         
+    }                                                                               
 
     memcpy(hash_str, chunk->type, LEN_OF_BLOCK);                                        //
     memcpy(&(hash_str[4]), chunk->data, chunk->length);                                 // hash
     unsigned long hash = crc((unsigned char *)hash_str, LEN_OF_BLOCK + chunk->length);  //
-    print_number(hash, pfile);                                                          //
+    print_number(hash, buffer);                                                         //
 
     free(hash_str);
 }
 
-void make_png(FILE * file) {
+void make_png(png_buffer * buffer) {
+
+    buffer->data = (unsigned char *) calloc(8 + 30, sizeof(char));
 
     unsigned long WIDTH =  rand() % 512;
     unsigned long HEIGHT = rand() % 512;
 
     // signature ---------------------------------------------------------
     unsigned char signature[8] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
-    fwrite(signature, sizeof(char), 8, file);
+    memcpy(buffer->data, signature, 8);
+    buffer->len = 8;
     // signature ---------------------------------------------------------
 
 
@@ -87,7 +100,7 @@ void make_png(FILE * file) {
     IHDR.data[11] = 0;  // compression method  (const)
     IHDR.data[12] = 0;  // filtration          (const)
 
-    write_chunk(file, &IHDR);
+    write_chunk(&IHDR, buffer);
     free(IHDR.data);
     // IHDR - main info about picture ------------------------------------
 
@@ -104,7 +117,7 @@ void make_png(FILE * file) {
         IDAT.data[i] = rand() % 256;
     }
 
-    write_chunk(file, &IDAT);
+    write_chunk(&IDAT, buffer);
 
     free(IDAT.data);
     // IDAT - data -------------------------------------------------------
@@ -115,16 +128,17 @@ void make_png(FILE * file) {
     chunk IEND = {};
     strcpy(IEND.type, "IEND");
     IEND.length = 0;
-    write_chunk(file, &IEND);
+    write_chunk(&IEND, buffer);
     // IEND - end of pic -------------------------------------------------
-
-    fclose(file);
 }
 
 
 int main() {
-    FILE * pfile = fopen("test_pic.png", "wb");
-    make_png(pfile);
+    png_buffer buffer = {};
+    make_png(&buffer);
+
+    FILE * hui = fopen("txt.png", "wb");
+    fwrite(buffer.data, buffer.len, sizeof(char), hui);
     return 0;
 }
 
