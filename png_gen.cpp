@@ -1,73 +1,60 @@
-// free
-// code clean 
-
-
-
-
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-
 unsigned long crc(unsigned char *buf, int len);
-#define IS_NULL_PTR(ptr)    \
-    if (prt == NULL) {      \
-        printf("null prt"); \
-        return 0;           \
-    }
 
+// free
+// code clean 
 
-struct chunk{
-   unsigned long length;
-   char type[4];
-   char * data; 
+const unsigned long WIDTH = 200;
+const unsigned long HEIGHT = 200;
+const int IHDR_LENGTH = 13;
+const int START_LEN = 100;
+const int LEN_OF_BLOCK = 4;
+
+struct chunk {
+    unsigned long length;
+    char type[4];
+    char * data; 
 };
 
-const unsigned long width = 1;
-const unsigned long height = 1;
-const int IHDR_length = 13;
-
-void write_chunk(FILE *fp, chunk *chunk) {
+void print_number(unsigned long number, FILE * file) {
 
     unsigned char array[4];
-    array[0] = (chunk->length >> 24) & 0xFF;
-    array[1] = (chunk->length >> 16) & 0xFF;
-    array[2] = (chunk->length >> 8) & 0xFF;
-    array[3] = chunk->length & 0xFF;
+    array[0] = (number >> 24) & 0xFF;
+    array[1] = (number >> 16) & 0xFF;
+    array[2] = (number >> 8) & 0xFF;
+    array[3] = number & 0xFF;
 
     for (int i = 0; i < 4; i++) {
-        fprintf(fp, "%c", array[i]);
-    }
-
-    fwrite(chunk->type, sizeof(char), 4, fp);
-    char * hash_str = NULL;
-    if (chunk->data == NULL) {
-        hash_str = (char *)calloc(100, sizeof(char));
-    } else {
-        fwrite(chunk->data, sizeof(char), chunk->length, fp);
-        hash_str = (char *)calloc(strlen(chunk->data) + 100, sizeof(char));
-    }
-
-
-    memcpy(hash_str, chunk->type, 4);
-
-    memcpy(&(hash_str[4]), chunk->data, chunk->length); // !!!!!!!1
-
-    unsigned long hash = crc((unsigned char *)hash_str, 4 + chunk->length);
-    array[0] = (hash >> 24) & 0xFF;
-    array[1] = (hash >> 16) & 0xFF;
-    array[2] = (hash >> 8) & 0xFF;
-    array[3] = hash & 0xFF;
-
-    for (int i = 0; i < 4; i++) {
-        fprintf(fp, "%c", array[i]);
+        fprintf(file, "%c", array[i]);
     }
 }
 
+void write_chunk(FILE * pfile, chunk * chunk) {
+
+    print_number(chunk->length, pfile);              // len
+    fwrite(chunk->type, sizeof(char), 4, pfile);     // type
+
+    char * hash_str = NULL;                                                         //
+    if (chunk->data == NULL) {                                                      //
+        hash_str = (char *)calloc(START_LEN, sizeof(char));                         //
+    } else {                                                                        // data
+        fwrite(chunk->data, sizeof(char), chunk->length, pfile);                    //
+        hash_str = (char *)calloc(chunk->length + START_LEN, sizeof(char));         //
+    }                                                                               //
+
+    memcpy(hash_str, chunk->type, LEN_OF_BLOCK);                                        //
+    memcpy(&(hash_str[4]), chunk->data, chunk->length);                                 // hash
+    unsigned long hash = crc((unsigned char *)hash_str, LEN_OF_BLOCK + chunk->length);  //
+    print_number(hash, pfile);                                                          //
+
+    free(hash_str);
+}
+
 void make_png(FILE * file) {
-
-
 
     // signature ---------------------------------------------------------
     unsigned char signature[8] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
@@ -75,29 +62,29 @@ void make_png(FILE * file) {
     // signature ---------------------------------------------------------
 
 
-
     // IHDR - main info about picture ------------------------------------
     chunk IHDR = {};
-    IHDR.length = IHDR_length;              // length
-    strcpy(IHDR.type, "IHDR");     // type
+    IHDR.length = IHDR_LENGTH;     
+    strcpy(IHDR.type, "IHDR");  
 
-    IHDR.data = (char *)calloc(IHDR_length, sizeof(char));
+    IHDR.data = (char *)calloc(IHDR_LENGTH, sizeof(char));
 
-    IHDR.data[3] = (char) width;            // data
-    IHDR.data[2] = (char) (width >> 8);
-    IHDR.data[1] = (char) (width >> 16);
-    IHDR.data[0] = (char) (width >> 24);
+    IHDR.data[3] = (char) WIDTH;            // data
+    IHDR.data[2] = (char) (WIDTH >> 8);
+    IHDR.data[1] = (char) (WIDTH >> 16);
+    IHDR.data[0] = (char) (WIDTH >> 24);
 
-    IHDR.data[7] = (char) height;
-    IHDR.data[6] = (char) (height >> 8);
-    IHDR.data[5] = (char) (height >> 16);
-    IHDR.data[4] = (char) (height >> 24);
+    IHDR.data[7] = (char) HEIGHT;
+    IHDR.data[6] = (char) (HEIGHT >> 8);
+    IHDR.data[5] = (char) (HEIGHT >> 16);
+    IHDR.data[4] = (char) (HEIGHT >> 24);
 
     IHDR.data[8] = 1;   // bit depth
     IHDR.data[9] = 0;   // colour type (RGB)
-    IHDR.data[11] = 0;  // compression method 
-    IHDR.data[12] = 0;  // filtration
-    IHDR.data[10] = 0;  // weave method
+
+    IHDR.data[10] = 0;  // weave method        (const)
+    IHDR.data[11] = 0;  // compression method  (const)
+    IHDR.data[12] = 0;  // filtration          (const)
 
     write_chunk(file, &IHDR);
     free(IHDR.data);
@@ -109,19 +96,16 @@ void make_png(FILE * file) {
     chunk IDAT = {};
     strcpy(IDAT.type, "IDAT");
 
-    IDAT.length = width * height * 3; // 3 байта на пиксель (RGB)
-    char idata_chunk[] = {0x00, 0x00, 0x00, 0x00, // Длина чанка
-                        0x49, 0x44, 0x41, 0x54, // Тип чанка
-                        0x08, 0x00, // Флаг компрессии и фильтра
-                        0x00, 0x00, 0x00, 0x00, // CRC
-                        0x00, 0x00, 0x00, 0x00}; // CRC
+    IDAT.length = WIDTH * HEIGHT * 3; // (RGB)
 
-    char *data = (char *)calloc(IDAT.length + 10, sizeof(char));
+    IDAT.data = (char *)calloc(IDAT.length + 1, sizeof(char));
     for (int i = 0; i < IDAT.length; i++) {
-        data[i] = rand() % 256;
+        IDAT.data[i] = rand() % 256;
     }
-    IDAT.data = data;
+
     write_chunk(file, &IDAT);
+
+    free(IDAT.data);
     // IDAT - data -------------------------------------------------------
 
 
@@ -143,54 +127,50 @@ int main() {
     return 0;
 }
 
-   /* Table of CRCs of all 8-bit messages. */
-   unsigned long crc_table[256];
+    /* Table of CRCs of all 8-bit messages. */
+    unsigned long crc_table[256];
    
-   /* Flag: has the table been computed? Initially false. */
-   int crc_table_computed = 0;
+    /* Flag: has the table been computed? Initially false. */
+    int crc_table_computed = 0;
    
-   /* Make the table for a fast CRC. */
-   void make_crc_table(void)
-   {
-     unsigned long c;
-     int n, k;
+    /* Make the table for a fast CRC. */
+void make_crc_table(void) {
+    unsigned long c;
+    int n, k;
    
-     for (n = 0; n < 256; n++) {
-       c = (unsigned long) n;
-       for (k = 0; k < 8; k++) {
-         if (c & 1)
+    for (n = 0; n < 256; n++) {
+        c = (unsigned long) n;
+        for (k = 0; k < 8; k++) {
+        if (c & 1)
            c = 0xedb88320L ^ (c >> 1);
-         else
+        else
            c = c >> 1;
-       }
-       crc_table[n] = c;
-     }
-     crc_table_computed = 1;
-   }
+        }
+        crc_table[n] = c;
+    }
+    crc_table_computed = 1;
+}
    
-   /* Update a running CRC with the bytes buf[0..len-1]--the CRC
-      should be initialized to all 1's, and the transmitted value
-      is the 1's complement of the final running CRC (see the
-      crc() routine below)). */
+    /* Update a running CRC with the bytes buf[0..len-1]--the CRC
+        should be initialized to all 1's, and the transmitted value
+        is the 1's complement of the final running CRC (see the
+        crc() routine below)). */
    
-   unsigned long update_crc(unsigned long crc, unsigned char *buf,
-                            int len)
-   {
-     unsigned long c = crc;
-     int n;
+unsigned long update_crc(unsigned long crc, unsigned char *buf, int len) {
+    unsigned long c = crc;
+    int n;
    
-     if (!crc_table_computed)
-       make_crc_table();
-     for (n = 0; n < len; n++) {
+    if (!crc_table_computed)
+        make_crc_table();
+    for (n = 0; n < len; n++) {
        c = crc_table[(c ^ buf[n]) & 0xff] ^ (c >> 8);
-     }
-     return c;
-   }
+    }
+    return c;
+}
    
-   /* Return the CRC of the bytes buf[0..len-1]. */
-   unsigned long crc(unsigned char *buf, int len)
-   {
-     return update_crc(0xffffffffL, buf, len) ^ 0xffffffffL;
-   }
+/* Return the CRC of the bytes buf[0..len-1]. */
+unsigned long crc(unsigned char *buf, int len) {
+    return update_crc(0xffffffffL, buf, len) ^ 0xffffffffL;
+}
 
 
