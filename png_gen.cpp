@@ -18,7 +18,7 @@ struct chunk {
 };
 
 struct png_buffer {
-     unsigned char * data;
+    unsigned char * data;
     size_t len;
 };
 
@@ -27,23 +27,23 @@ void print_number(unsigned long number, png_buffer * buffer) {
     unsigned char array[4];
     array[0] = (number >> 24) & 0xFF;
     array[1] = (number >> 16) & 0xFF;
-    array[2] = (number >> 8) & 0xFF;
-    array[3] = number & 0xFF;
+    array[2] = (number >>  8) & 0xFF;
+    array[3] =  number        & 0xFF;
 
     for (int i = 0; i < 4; i++) {
         buffer->data[buffer->len] = array[i];
         buffer->len++;
     }
-
-
 }
 
 void write_chunk(chunk * chunk, png_buffer * buffer) {
 
-    buffer->data = (unsigned char *) realloc(buffer->data, buffer->len + chunk->length + 15);
-    print_number(chunk->length, buffer);              // len
-    memcpy(&(buffer->data[buffer->len]), chunk->type, 4);   //
-    buffer->len += 4;                                       // type
+    buffer->data = (unsigned char *) realloc(buffer->data, buffer->len + chunk->length + 12);
+
+    print_number(chunk->length, buffer);             
+    
+    memcpy(&(buffer->data[buffer->len]), chunk->type, 4);   
+    buffer->len += 4;                                      
 
     char * hash_str = NULL;                                                         
     if (chunk->data == NULL) {                                                      
@@ -64,7 +64,7 @@ void write_chunk(chunk * chunk, png_buffer * buffer) {
 
 void make_png(png_buffer * buffer) {
 
-    buffer->data = (unsigned char *) calloc(8 + 30, sizeof(char));
+    buffer->data = (unsigned char *) calloc(START_LEN, sizeof(char));
 
     unsigned long WIDTH =  rand() % 512;
     unsigned long HEIGHT = rand() % 512;
@@ -83,7 +83,7 @@ void make_png(png_buffer * buffer) {
 
     IHDR.data = (char *)calloc(IHDR_LENGTH, sizeof(char));
 
-    IHDR.data[3] = (char) WIDTH;            // data
+    IHDR.data[3] = (char)  WIDTH;            // data
     IHDR.data[2] = (char) (WIDTH >> 8);
     IHDR.data[1] = (char) (WIDTH >> 16);
     IHDR.data[0] = (char) (WIDTH >> 24);
