@@ -8,8 +8,6 @@ unsigned long crc(unsigned char *buf, int len);
 // free
 // code clean 
 
-const unsigned long WIDTH = 200;
-const unsigned long HEIGHT = 200;
 const int IHDR_LENGTH = 13;
 const int START_LEN = 100;
 const int LEN_OF_BLOCK = 4;
@@ -55,6 +53,9 @@ void write_chunk(FILE * pfile, chunk * chunk) {
 }
 
 void make_png(FILE * file) {
+
+    unsigned long WIDTH =  rand() % 512;
+    unsigned long HEIGHT = rand() % 512;
 
     // signature ---------------------------------------------------------
     unsigned char signature[8] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
@@ -127,11 +128,11 @@ int main() {
     return 0;
 }
 
-    /* Table of CRCs of all 8-bit messages. */
-    unsigned long crc_table[256];
+/* Table of CRCs of all 8-bit messages. */
+unsigned long crc_table[256];
    
-    /* Flag: has the table been computed? Initially false. */
-    int crc_table_computed = 0;
+/* Flag: has the table been computed? Initially false. */
+int crc_table_computed = 0;
    
     /* Make the table for a fast CRC. */
 void make_crc_table(void) {
@@ -151,10 +152,10 @@ void make_crc_table(void) {
     crc_table_computed = 1;
 }
    
-    /* Update a running CRC with the bytes buf[0..len-1]--the CRC
-        should be initialized to all 1's, and the transmitted value
-        is the 1's complement of the final running CRC (see the
-        crc() routine below)). */
+/* Update a running CRC with the bytes buf[0..len-1]--the CRC
+    should be initialized to all 1's, and the transmitted value
+    s the 1's complement of the final running CRC (see the
+    crc() routine below)). */
    
 unsigned long update_crc(unsigned long crc, unsigned char *buf, int len) {
     unsigned long c = crc;
