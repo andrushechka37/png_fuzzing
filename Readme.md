@@ -22,7 +22,7 @@
 
 CRC - хеш , высчитывающийся для полей тип и данные
 
-Для высчитывания CRC я взял ее реализацию с [сайта спецификаций png](http://www.libpng.org/pub/png/spec/1.2/PNG-CRCAppendix.html)
+Нужную ее реализацию я долго искал и в конце концов нашел на [сайте спецификаций png](http://www.libpng.org/pub/png/spec/1.2/PNG-CRCAppendix.html)
 
 ## PNG signature
 В начале каждого png файла должна быть такая подпись:
@@ -52,8 +52,8 @@ fwrite(signature, sizeof(char), 8, picture);
     IHDR.data[7] = (char) HEIGHT;
     ...
 
-    IHDR.data[8] = 1;   // bit depth
-    IHDR.data[9] = 0;   // colour type (greyscale)
+    IHDR.data[8] = 8;   // bit depth (bits on pixel) 
+    IHDR.data[9] = 2;   // colour type (0 - greyscale, 2 - RGB)
 
     IHDR.data[10] = 0;  // weave method        (const)
     IHDR.data[11] = 0;  // compression method  (const)
@@ -72,13 +72,35 @@ strcpy(IDAT.type, "IDAT");
 
 IDAT.length = WIDTH * HEIGHT * 3;
 
-IDAT.data = (char *)calloc(IDAT.length + 1, sizeof(char));
+IDAT.data = (char *) calloc(IDAT.length + 1, sizeof(char));
 for (int i = 0; i < IDAT.length; i++) {
     IDAT.data[i] = rand() % 256;
 }
 
 write_chunk(file, &IDAT);
 ```
+
+Но все оказалось не так просто: какие-то вьюеры открывали файл, но подавляющее большинство программ считало файл невалидным. Это было по причине того, что я не использовал сжатие данных. Тогда я добавил сжатие данных с помощью библиотеки `zlib.h`. Также надо было добавить байт фильтра перед каждой строкой.
+
+
+Пример сжатия данных:
+```C
+uLongf compressed_size = compressBound(IDAT.length);
+unsigned char * compressed_data = (unsigned char *) calloc(compressed_size,1);
+
+int zlib_result = compress(compressed_data, &compressed_size, (const unsigned char *)IDAT.data, IDAT.length);
+
+```
+
+Выставление байтов фильтра:
+```C
+for (int y = 0; y < HEIGHT; y++) {
+    memmove(&IDAT.data[y * (WIDTH * 3 + 1)], &IDAT.data[y * WIDTH * 3], WIDTH * 3);  
+    IDAT.data[y * (WIDTH * 3 + 1)] = 0; 
+}
+```
+
+
 
 ## IEND
 Завершающий чанк, который не несет никакой информации
@@ -91,8 +113,12 @@ strcpy(IEND.type, "IEND");
 IEND.length = 0;
 write_chunk(file, &IEND);
 ```
+И в итоге получается такая красота:
 
-# Еще чето 
+![alt text](images/txt.png)
+
+# Проверка эффективности мутации
+
 
 # Источники
 

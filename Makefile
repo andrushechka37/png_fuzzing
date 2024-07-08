@@ -14,4 +14,4 @@ CXXFLAGS =  -D _DEBUG -ggdb3 -O0 -Wall -Wextra -Weffc++ -Waggressive-loop-optimi
 
 
 compile:
-	gcc png_gen.c $(CXXFLAGS)-g -o png_gen.o && ./png_gen.o
+	g++ png_n.cpp -lz $(CXXFLAGS) -g -o png_gen.o && ./png_gen.o

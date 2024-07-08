@@ -81,10 +81,8 @@ void make_png(struct png_buffer * buffer) {
 
     IS_NULL_PTR(buffer->data);
 
-    // unsigned long WIDTH =  rand() % 256;
-    // unsigned long HEIGHT = rand() % 256;
-    unsigned long WIDTH =  32;
-    unsigned long HEIGHT = 32;
+    unsigned long WIDTH =  rand() % 256;
+    unsigned long HEIGHT = rand() % 256;
 
 
     // signature ---------------------------------------------------------
@@ -115,8 +113,8 @@ void make_png(struct png_buffer * buffer) {
     IHDR.data[5] = (char) (HEIGHT >> 16);
     IHDR.data[4] = (char) (HEIGHT >> 24);
 
-    IHDR.data[8] = 8;   // bit depth
-    IHDR.data[9] = 2;   // colour type (RGB)
+    IHDR.data[8] = 1;   // bit depth
+    IHDR.data[9] = 0;   // colour type (RGB)
 
     IHDR.data[10] = 0;  // weave method        (const)
     IHDR.data[11] = 0;  // compression method  (const)
@@ -139,10 +137,8 @@ void make_png(struct png_buffer * buffer) {
     IDAT.data = array3;
 
     IS_NULL_PTR(IDAT.data);
-    for (int i = 0; i < IDAT.length; i+= 3) {
-        IDAT.data[i] = 0;
-        IDAT.data[i+1] = 255;
-        IDAT.data[i+2] = 0; // rand() % 256
+    for (int i = 0; i < IDAT.length; i++) {
+        IDAT.data[i] = rand() % 256;
     }
 
     write_chunk(&IDAT, buffer);
@@ -191,7 +187,7 @@ void make_crc_table(void) {
     crc() routine below)). */
    
 unsigned long update_crc(unsigned long crc, unsigned char *buf, int len) {
-
+    
     unsigned long c = crc;
     int n;
    
@@ -211,13 +207,13 @@ unsigned long crc(unsigned char *buf, int len) {
 
 
 int main() {
-    // while (1) {
+    while (1) {
         struct png_buffer buffer = {};
         make_png(&buffer);
         // free(buffer.data);
         FILE * hui = fopen("txt.png", "wb");
         fwrite(buffer.data, buffer.len, sizeof(char), hui);
         fclose(hui);
-    // }
+    }
     return 0;
 }

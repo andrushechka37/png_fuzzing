@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/_types/_size_t.h>
+#include "zlib.h"
 
 unsigned long crc(unsigned char *buf, int len);
 
@@ -14,7 +15,7 @@ const int LEN_OF_BLOCK = 4;
 struct chunk {
     unsigned long length;
     char type[4];
-    char * data; 
+    unsigned char * data; 
 };
 
 struct png_buffer {
@@ -66,8 +67,8 @@ void make_png(png_buffer * buffer) {
 
     buffer->data = (unsigned char *) calloc(START_LEN, sizeof(char));
 
-    unsigned long WIDTH =  rand() % 512;
-    unsigned long HEIGHT = rand() % 512;
+    unsigned long WIDTH =  rand() % 256;
+    unsigned long HEIGHT = rand() % 256;
 
     // signature ---------------------------------------------------------
     unsigned char signature[8] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
@@ -81,7 +82,7 @@ void make_png(png_buffer * buffer) {
     IHDR.length = IHDR_LENGTH;     
     strcpy(IHDR.type, "IHDR");  
 
-    IHDR.data = (char *)calloc(IHDR_LENGTH, sizeof(char));
+    IHDR.data = (unsigned char *)calloc(IHDR_LENGTH, sizeof(char));
 
     IHDR.data[3] = (char)  WIDTH;            // data
     IHDR.data[2] = (char) (WIDTH >> 8);
@@ -93,8 +94,8 @@ void make_png(png_buffer * buffer) {
     IHDR.data[5] = (char) (HEIGHT >> 16);
     IHDR.data[4] = (char) (HEIGHT >> 24);
 
-    IHDR.data[8] = 1;   // bit depth
-    IHDR.data[9] = 0;   // colour type (RGB)
+    IHDR.data[8] = 8;   // bit depth // 1
+    IHDR.data[9] = 2;   // colour type (RGB) // 0
 
     IHDR.data[10] = 0;  // weave method        (const)
     IHDR.data[11] = 0;  // compression method  (const)
@@ -110,16 +111,39 @@ void make_png(png_buffer * buffer) {
     chunk IDAT = {};
     strcpy(IDAT.type, "IDAT");
 
-    IDAT.length = WIDTH * HEIGHT * 3; // (RGB)
+    IDAT.length = WIDTH * HEIGHT * 3 + HEIGHT; // (RGB)
 
-    IDAT.data = (char *)calloc(IDAT.length + 1, sizeof(char));
+    IDAT.data = (unsigned char *) calloc(IDAT.length + 1, sizeof(char));
     for (int i = 0; i < IDAT.length; i++) {
         IDAT.data[i] = rand() % 256;
     }
 
-    write_chunk(&IDAT, buffer);
+    for (int y = 0; y < HEIGHT; y++) {
+        // Сдвигаем данные каждой строки на 1 байт вперед
+        memmove(&IDAT.data[y * (WIDTH * 3 + 1)], &IDAT.data[y * WIDTH * 3], WIDTH * 3);  
+        // Устанавливаем байт фильтра (тип 0 - None) в начало строки
+        IDAT.data[y * (WIDTH * 3 + 1)] = 0; 
+    }
+
+   // Сжатие данных с помощью zlib
+    uLongf compressed_size = compressBound(IDAT.length);
+    unsigned char * compressed_data = (unsigned char *) calloc(compressed_size,1);
+
+    if (compressed_data == NULL) {
+        fprintf(stderr, "Ошибка выделения памяти\n");
+    }
+
+    int zlib_result = compress(compressed_data, &compressed_size, (const unsigned char *)IDAT.data,  IDAT.length);
+    if (zlib_result != Z_OK) {
+        fprintf(stderr, "Ошибка сжатия: %d\n", zlib_result);
+    }
 
     free(IDAT.data);
+    IDAT.data = compressed_data;
+
+    write_chunk(&IDAT, buffer);
+
+    free(compressed_data);
     // IDAT - data -------------------------------------------------------
 
 
@@ -189,3 +213,9 @@ unsigned long crc(unsigned char *buf, int len) {
 }
 
 
+
+
+
+
+
+    
