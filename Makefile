@@ -1,4 +1,4 @@
-CXXFLAGS =  -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++ -Waggressive-loop-optimizations \
+CXXFLAGS =  -D _DEBUG -ggdb3 -O0 -Wall -Wextra -Weffc++ -Waggressive-loop-optimizations \
    -Wc++14-compat -Wmissing-declarations -Wcast-qual -Wchar-subscripts                             \
    -Wconditionally-supported -Wconversion -Wctor-dtor-privacy -Wempty-body -Wfloat-equal           \
    -Wformat-nonliteral -Wformat-security -Wformat-signedness -Wformat=2 -Winline                   \
@@ -14,4 +14,4 @@ CXXFLAGS =  -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++ -Waggressive-
 
 
 compile:
-	clang++ png_gen.cpp $(CXXFLAGS)-g -o png_gen.o && ./png_gen.o
+	gcc png_gen.c $(CXXFLAGS)-g -o png_gen.o && ./png_gen.o
