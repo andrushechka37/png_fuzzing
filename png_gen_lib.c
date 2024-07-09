@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +11,8 @@ unsigned long crc(unsigned char *buf, int len);
 const int IHDR_LENGTH = 13;
 const int START_LEN = 100;
 const int LEN_OF_BLOCK = 4;
+
+#define GEN_BAD_PNG 
 
 void print_number(unsigned long number, struct png_buffer * buffer) {
 
@@ -59,7 +62,24 @@ void make_png(struct png_buffer * buffer) {
     unsigned long HEIGHT = rand() % 256;
 
     // signature ---------------------------------------------------------
-    unsigned char signature[8] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+    #ifdef GEN_BAD_PNG
+        bool signature_flag = rand() % 2;
+    #endif
+    #ifndef GEN_BAD_PNG
+        bool signature_flag = 1;
+    #endif
+
+    unsigned char signature[8] = {};
+    unsigned char right_signature[8] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+
+    if (signature_flag) {
+        memcpy(signature, right_signature, 8);
+    } else {
+        for (int i = 0; i < 8; i++) {
+            signature[i] = rand() % 0xAA;
+        }
+    }
+
     memcpy(buffer->data, signature, 8);
     buffer->len = 8;
     // signature ---------------------------------------------------------
@@ -67,10 +87,24 @@ void make_png(struct png_buffer * buffer) {
 
     // IHDR - main info about picture ------------------------------------
     struct chunk IHDR = {};
-    IHDR.length = IHDR_LENGTH;     
-    strcpy(IHDR.type, "IHDR");  
 
-    IHDR.data = (unsigned char *)calloc(IHDR_LENGTH, sizeof(char));
+    #ifdef GEN_BAD_PNG
+        bool IHDR_flag = rand() % 2;
+    #endif
+    #ifndef GEN_BAD_PNG
+        bool IHDR_flag = 1;
+    #endif
+
+
+    if (IHDR_flag) {
+        strcpy(IHDR.type, "IHDR"); 
+    } else {
+        strcpy(IHDR.type, "SMTH");
+    }
+
+    IHDR.length = IHDR_LENGTH;     
+
+    IHDR.data = (unsigned char *) calloc(IHDR_LENGTH, sizeof(char));
 
     IHDR.data[3] = (char)  WIDTH;            // data
     IHDR.data[2] = (char) (WIDTH >> 8);
@@ -82,12 +116,24 @@ void make_png(struct png_buffer * buffer) {
     IHDR.data[5] = (char) (HEIGHT >> 16);
     IHDR.data[4] = (char) (HEIGHT >> 24);
 
-    IHDR.data[8] = 8;   // bit depth // 1
-    IHDR.data[9] = 2;   // colour type (RGB) // 0
+    if (IHDR_flag) {
+        IHDR.data[8] = 8;   // bit depth // 1
+        IHDR.data[9] = 2;   // colour type (RGB) // 0
+    } else {
+        IHDR.data[8] = rand() % 20;   // bit depth // 1
+        IHDR.data[9] = rand() % 10;   // colour type (RGB) // 0
+    }
 
-    IHDR.data[10] = 0;  // weave method        (const)
-    IHDR.data[11] = 0;  // compression method  (const)
-    IHDR.data[12] = 0;  // filtration          (const)
+
+    if (IHDR_flag) {
+        IHDR.data[10] = 0;  // weave method        (const)
+        IHDR.data[11] = 0;  // compression method  (const)
+        IHDR.data[12] = 0;  // filtration          (const)
+    } else {
+        IHDR.data[10] = rand() % 10;  // weave method        (const)
+        IHDR.data[11] = rand() % 10;  // compression method  (const)
+        IHDR.data[12] = rand() % 10;  // filtration          (const)
+    }
 
     write_chunk(&IHDR, buffer);
     free(IHDR.data);
@@ -97,6 +143,14 @@ void make_png(struct png_buffer * buffer) {
 
     // IDAT - data -------------------------------------------------------
     struct chunk IDAT = {};
+        
+    #ifdef GEN_BAD_PNG
+        bool IDAT_flag = rand() % 2;
+    #endif
+    #ifndef GEN_BAD_PNG
+        bool IDAT_flag = 1;
+    #endif
+
     strcpy(IDAT.type, "IDAT");
 
     IDAT.length = WIDTH * HEIGHT * 3 + HEIGHT; // (RGB)
@@ -108,28 +162,37 @@ void make_png(struct png_buffer * buffer) {
 
     for (int y = 0; y < HEIGHT; y++) {
         memmove(&IDAT.data[y * (WIDTH * 3 + 1)], &IDAT.data[y * WIDTH * 3], WIDTH * 3);  
-        IDAT.data[y * (WIDTH * 3 + 1)] = 0; 
+
+        if (IDAT_flag) {
+            IDAT.data[y * (WIDTH * 3 + 1)] = 0; 
+        } else {
+            IDAT.data[y * (WIDTH * 3 + 1)] = rand() % 10; 
+        }
     }
 
-   // zlib
-    uLongf compressed_size = compressBound(IDAT.length);
-    unsigned char * compressed_data = (unsigned char *) calloc(compressed_size,1);
+    if (IDAT_flag) {
+        // zlib
+        uLongf compressed_size = compressBound(IDAT.length);
+        unsigned char * compressed_data = (unsigned char *) calloc(compressed_size,1);
 
-    if (compressed_data == NULL) {
-        fprintf(stderr, "Ошибка выделения памяти\n");
+        if (compressed_data == NULL) {
+            fprintf(stderr, "Ошибка выделения памяти\n");
+        }
+
+        int zlib_result = compress(compressed_data, &compressed_size, (const unsigned char *)IDAT.data,  IDAT.length);
+        if (zlib_result != Z_OK) {
+            fprintf(stderr, "Ошибка сжатия: %d\n", zlib_result);
+        }
+
+        free(IDAT.data);
+        IDAT.data = compressed_data;
+        write_chunk(&IDAT, buffer);
+
+        free(compressed_data);
+    } else {
+        write_chunk(&IDAT, buffer);
+        free(IDAT.data);
     }
-
-    int zlib_result = compress(compressed_data, &compressed_size, (const unsigned char *)IDAT.data,  IDAT.length);
-    if (zlib_result != Z_OK) {
-        fprintf(stderr, "Ошибка сжатия: %d\n", zlib_result);
-    }
-
-    free(IDAT.data);
-    IDAT.data = compressed_data;
-
-    write_chunk(&IDAT, buffer);
-
-    free(compressed_data);
     // IDAT - data -------------------------------------------------------
 
 
@@ -137,7 +200,9 @@ void make_png(struct png_buffer * buffer) {
     // IEND - end of pic -------------------------------------------------
     struct chunk IEND = {};
     strcpy(IEND.type, "IEND");
+
     IEND.length = 0;
+
     write_chunk(&IEND, buffer);
     // IEND - end of pic -------------------------------------------------
 }
@@ -186,5 +251,14 @@ unsigned long update_crc(unsigned long crc, unsigned char *buf, int len) {
    
 /* Return the CRC of the bytes buf[0..len-1]. */
 unsigned long crc(unsigned char *buf, int len) {
+
+    #ifndef GEN_BAD_PNG
     return update_crc(0xffffffffL, buf, len) ^ 0xffffffffL;
+    #endif
+
+    #ifdef GEN_BAD_PNG
+        return rand() % 0xffffffff;
+    #endif
+
+
 }

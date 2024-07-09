@@ -14,6 +14,6 @@ CXXFLAGS =  -D _DEBUG -ggdb3 -O0 -Wall -Wextra -Weffc++ -Waggressive-loop-optimi
 
 
 compile:
-	g++ png_n.cpp -lz $(CXXFLAGS) -g -o png_gen.o && ./png_gen.o
+	gcc png_gen_lib.c -lz $(CXXFLAGS) -g -o png_gen.o && ./png_gen.o
 
 # gcc -shared -Wall -fsanitize=address -fsanitize=undefined -lz -O3 mutation.c png_gen_lib.c  -o example.so

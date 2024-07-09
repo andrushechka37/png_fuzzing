@@ -9,3 +9,5 @@ test.c
 .DS_Store
 png_n.o.dSYM
 savemain.c
+example.so
+txt.png
