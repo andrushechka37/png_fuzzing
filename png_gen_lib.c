@@ -1,10 +1,9 @@
-#include <cstdio>
-#include <cstring>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/_types/_size_t.h>
 #include "zlib.h"
+#include "png_gen_lib.h"
 
 unsigned long crc(unsigned char *buf, int len);
 
@@ -12,18 +11,7 @@ const int IHDR_LENGTH = 13;
 const int START_LEN = 100;
 const int LEN_OF_BLOCK = 4;
 
-struct chunk {
-    unsigned long length;
-    char type[4];
-    unsigned char * data; 
-};
-
-struct png_buffer {
-    unsigned char * data;
-    size_t len;
-};
-
-void print_number(unsigned long number, png_buffer * buffer) {
+void print_number(unsigned long number, struct png_buffer * buffer) {
 
     unsigned char array[4];
     array[0] = (number >> 24) & 0xFF;
@@ -37,7 +25,7 @@ void print_number(unsigned long number, png_buffer * buffer) {
     }
 }
 
-void write_chunk(chunk * chunk, png_buffer * buffer) {
+void write_chunk(struct chunk * chunk, struct png_buffer * buffer) {
 
     buffer->data = (unsigned char *) realloc(buffer->data, buffer->len + chunk->length + 12);
 
@@ -63,7 +51,7 @@ void write_chunk(chunk * chunk, png_buffer * buffer) {
     free(hash_str);
 }
 
-void make_png(png_buffer * buffer) {
+void make_png(struct png_buffer * buffer) {
 
     buffer->data = (unsigned char *) calloc(START_LEN, sizeof(char));
 
@@ -78,7 +66,7 @@ void make_png(png_buffer * buffer) {
 
 
     // IHDR - main info about picture ------------------------------------
-    chunk IHDR = {};
+    struct chunk IHDR = {};
     IHDR.length = IHDR_LENGTH;     
     strcpy(IHDR.type, "IHDR");  
 
@@ -108,7 +96,7 @@ void make_png(png_buffer * buffer) {
 
 
     // IDAT - data -------------------------------------------------------
-    chunk IDAT = {};
+    struct chunk IDAT = {};
     strcpy(IDAT.type, "IDAT");
 
     IDAT.length = WIDTH * HEIGHT * 3 + HEIGHT; // (RGB)
@@ -119,13 +107,11 @@ void make_png(png_buffer * buffer) {
     }
 
     for (int y = 0; y < HEIGHT; y++) {
-        // Сдвигаем данные каждой строки на 1 байт вперед
         memmove(&IDAT.data[y * (WIDTH * 3 + 1)], &IDAT.data[y * WIDTH * 3], WIDTH * 3);  
-        // Устанавливаем байт фильтра (тип 0 - None) в начало строки
         IDAT.data[y * (WIDTH * 3 + 1)] = 0; 
     }
 
-   // Сжатие данных с помощью zlib
+   // zlib
     uLongf compressed_size = compressBound(IDAT.length);
     unsigned char * compressed_data = (unsigned char *) calloc(compressed_size,1);
 
@@ -149,22 +135,13 @@ void make_png(png_buffer * buffer) {
 
 
     // IEND - end of pic -------------------------------------------------
-    chunk IEND = {};
+    struct chunk IEND = {};
     strcpy(IEND.type, "IEND");
     IEND.length = 0;
     write_chunk(&IEND, buffer);
     // IEND - end of pic -------------------------------------------------
 }
 
-
-int main() {
-    png_buffer buffer = {};
-    make_png(&buffer);
-
-    FILE * hui = fopen("txt.png", "wb");
-    fwrite(buffer.data, buffer.len, sizeof(char), hui);
-    return 0;
-}
 
 /* Table of CRCs of all 8-bit messages. */
 unsigned long crc_table[256];
@@ -211,11 +188,3 @@ unsigned long update_crc(unsigned long crc, unsigned char *buf, int len) {
 unsigned long crc(unsigned char *buf, int len) {
     return update_crc(0xffffffffL, buf, len) ^ 0xffffffffL;
 }
-
-
-
-
-
-
-
-    

@@ -8,3 +8,4 @@ test.c
 .vscode
 .DS_Store
 png_n.o.dSYM
+savemain.c
