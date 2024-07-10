@@ -11,8 +11,9 @@ unsigned long crc(unsigned char *buf, int len);
 const int IHDR_LENGTH = 13;
 const int START_LEN = 100;
 const int LEN_OF_BLOCK = 4;
+const int HUGE_LEN = 200000;
 
-#define GEN_BAD_PNG 
+// #define GEN_BAD_PNG 
 
 void print_number(unsigned long number, struct png_buffer * buffer) {
 
@@ -151,7 +152,12 @@ void make_png(struct png_buffer * buffer) {
         bool IDAT_flag = 1;
     #endif
 
-    strcpy(IDAT.type, "IDAT");
+    if (IDAT_flag) {
+        strcpy(IDAT.type, "IDAT");
+    } else {
+        strcpy(IDAT.type, "SMTH");
+    }
+
 
     IDAT.length = WIDTH * HEIGHT * 3 + HEIGHT; // (RGB)
 
@@ -199,7 +205,18 @@ void make_png(struct png_buffer * buffer) {
 
     // IEND - end of pic -------------------------------------------------
     struct chunk IEND = {};
-    strcpy(IEND.type, "IEND");
+    #ifdef GEN_BAD_PNG
+        bool IEND_flag = rand() % 2;
+    #endif
+    #ifndef GEN_BAD_PNG
+        bool IEND_flag = 1;
+    #endif
+
+    if (IEND_flag) {
+        strcpy(IEND.type, "IEND");
+    } else {
+        strcpy(IEND.type, "SMTH");
+    }
 
     IEND.length = 0;
 
@@ -251,14 +268,29 @@ unsigned long update_crc(unsigned long crc, unsigned char *buf, int len) {
    
 /* Return the CRC of the bytes buf[0..len-1]. */
 unsigned long crc(unsigned char *buf, int len) {
-
-    #ifndef GEN_BAD_PNG
-    return update_crc(0xffffffffL, buf, len) ^ 0xffffffffL;
-    #endif
-
+    
     #ifdef GEN_BAD_PNG
-        return rand() % 0xffffffff;
+        bool CRC_flag = rand() % 2;
+    #endif
+    #ifndef GEN_BAD_PNG
+        bool CRC_flag = 1;
     #endif
 
+    if (CRC_flag) {
+        return update_crc(0xffffffffL, buf, len) ^ 0xffffffffL;
+    } else {
+        return rand() % 0xffffffff;
+    }
+}
 
+
+int main() {
+    // while (1) {
+    struct png_buffer buffer = {};
+    make_png(&buffer);
+    // }
+
+    FILE * hui = fopen("txt.png", "wb");
+    fwrite(buffer.data, buffer.len, sizeof(char), hui);
+    return 0;
 }
