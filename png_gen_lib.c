@@ -11,9 +11,9 @@ unsigned long crc(unsigned char *buf, int len);
 const int IHDR_LENGTH = 13;
 const int START_LEN = 100;
 const int LEN_OF_BLOCK = 4;
-const int HUGE_LEN = 200000;
+const int HUGE_LEN = 300000;
 
-// #define GEN_BAD_PNG 
+#define GEN_BAD_PNG 
 
 void print_number(unsigned long number, struct png_buffer * buffer) {
 
@@ -31,39 +31,33 @@ void print_number(unsigned long number, struct png_buffer * buffer) {
 
 void write_chunk(struct chunk * chunk, struct png_buffer * buffer) {
 
-    buffer->data = (unsigned char *) realloc(buffer->data, buffer->len + chunk->length + 12);
-
     print_number(chunk->length, buffer);             
     
     memcpy(&(buffer->data[buffer->len]), chunk->type, 4);   
     buffer->len += 4;                                      
 
-    char * hash_str = NULL;                                                         
-    if (chunk->data == NULL) {                                                      
-        hash_str = (char *) calloc(START_LEN, sizeof(char));                         
-    } else {                                                                        // data
+    char hash_str[HUGE_LEN] = "";                                                         
+    if (chunk->data != NULL) {                                                                                                                           // data
         memcpy(&(buffer->data[buffer->len]), chunk->data, chunk->length);
-        buffer->len += chunk->length;
-        hash_str = (char *) calloc(chunk->length + START_LEN, sizeof(char));         
+        buffer->len += chunk->length;       
     }                                                                               
 
-    memcpy(hash_str, chunk->type, LEN_OF_BLOCK);                                        //
-    memcpy(&(hash_str[4]), chunk->data, chunk->length);                                 // hash
-    unsigned long hash = crc((unsigned char *)hash_str, LEN_OF_BLOCK + chunk->length);  //
-    print_number(hash, buffer);                                                         //
-
-    free(hash_str);
+    memcpy(hash_str, chunk->type, LEN_OF_BLOCK);                                         //
+    memcpy(&(hash_str[4]), chunk->data, chunk->length);                                  // hash
+    unsigned long hash = crc((unsigned char *) hash_str, LEN_OF_BLOCK + chunk->length);  //
+    print_number(hash, buffer);                                                          //
 }
 
 void make_png(struct png_buffer * buffer) {
 
-    buffer->data = (unsigned char *) calloc(START_LEN, sizeof(char));
+    unsigned char data[HUGE_LEN] = "";
+    buffer->data = data;
 
     unsigned long WIDTH =  rand() % 256;
     unsigned long HEIGHT = rand() % 256;
 
     // signature ---------------------------------------------------------
-    #ifdef GEN_BAD_PNG
+    #ifdef GEN_BAD_PNG      // TODO: maybe put in define, too many copies
         bool signature_flag = rand() % 2;
     #endif
     #ifndef GEN_BAD_PNG
@@ -105,7 +99,8 @@ void make_png(struct png_buffer * buffer) {
 
     IHDR.length = IHDR_LENGTH;     
 
-    IHDR.data = (unsigned char *) calloc(IHDR_LENGTH, sizeof(char));
+    unsigned char data1[IHDR_LENGTH] = "";
+    IHDR.data = data1;
 
     IHDR.data[3] = (char)  WIDTH;            // data
     IHDR.data[2] = (char) (WIDTH >> 8);
@@ -120,24 +115,20 @@ void make_png(struct png_buffer * buffer) {
     if (IHDR_flag) {
         IHDR.data[8] = 8;   // bit depth // 1
         IHDR.data[9] = 2;   // colour type (RGB) // 0
-    } else {
-        IHDR.data[8] = rand() % 20;   // bit depth // 1
-        IHDR.data[9] = rand() % 10;   // colour type (RGB) // 0
-    }
 
-
-    if (IHDR_flag) {
         IHDR.data[10] = 0;  // weave method        (const)
         IHDR.data[11] = 0;  // compression method  (const)
         IHDR.data[12] = 0;  // filtration          (const)
     } else {
-        IHDR.data[10] = rand() % 10;  // weave method        (const)
-        IHDR.data[11] = rand() % 10;  // compression method  (const)
-        IHDR.data[12] = rand() % 10;  // filtration          (const)
+        IHDR.data[8] = rand() % 20;
+        IHDR.data[9] = rand() % 10;
+
+        IHDR.data[10] = rand() % 10;
+        IHDR.data[11] = rand() % 10;
+        IHDR.data[12] = rand() % 10;
     }
 
     write_chunk(&IHDR, buffer);
-    free(IHDR.data);
     // IHDR - main info about picture ------------------------------------
 
 
@@ -161,7 +152,8 @@ void make_png(struct png_buffer * buffer) {
 
     IDAT.length = WIDTH * HEIGHT * 3 + HEIGHT; // (RGB)
 
-    IDAT.data = (unsigned char *) calloc(IDAT.length + 1, sizeof(char));
+    unsigned char data2[HUGE_LEN] = "";
+    IDAT.data = data2;
     for (int i = 0; i < IDAT.length; i++) {
         IDAT.data[i] = rand() % 256;
     }
@@ -179,7 +171,7 @@ void make_png(struct png_buffer * buffer) {
     if (IDAT_flag) {
         // zlib
         uLongf compressed_size = compressBound(IDAT.length);
-        unsigned char * compressed_data = (unsigned char *) calloc(compressed_size,1);
+        unsigned char compressed_data[HUGE_LEN] = "";
 
         if (compressed_data == NULL) {
             fprintf(stderr, "Ошибка выделения памяти\n");
@@ -190,14 +182,11 @@ void make_png(struct png_buffer * buffer) {
             fprintf(stderr, "Ошибка сжатия: %d\n", zlib_result);
         }
 
-        free(IDAT.data);
         IDAT.data = compressed_data;
         write_chunk(&IDAT, buffer);
 
-        free(compressed_data);
     } else {
         write_chunk(&IDAT, buffer);
-        free(IDAT.data);
     }
     // IDAT - data -------------------------------------------------------
 
@@ -281,16 +270,4 @@ unsigned long crc(unsigned char *buf, int len) {
     } else {
         return rand() % 0xffffffff;
     }
-}
-
-
-int main() {
-    // while (1) {
-    struct png_buffer buffer = {};
-    make_png(&buffer);
-    // }
-
-    FILE * hui = fopen("txt.png", "wb");
-    fwrite(buffer.data, buffer.len, sizeof(char), hui);
-    return 0;
 }
