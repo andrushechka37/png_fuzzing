@@ -16,4 +16,6 @@ CXXFLAGS =  -D _DEBUG -ggdb3 -O0 -Wall -Wextra -Weffc++ -Waggressive-loop-optimi
 compile:
 	gcc png_gen_lib.c -lz $(CXXFLAGS) -g -o png_gen.o && ./png_gen.o
 
+# TODO I'd also add here rule for compiling custom mutation to shared library
+#
 # gcc -shared -Wall -fsanitize=address -fsanitize=undefined -lz -O3 mutation.c png_gen_lib.c  -o example.so

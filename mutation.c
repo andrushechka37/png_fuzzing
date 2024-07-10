@@ -1,4 +1,5 @@
-#include "../AFLplusplus/include/afl-fuzz.h"
+#include "../AFLplusplus/include/afl-fuzz.h"    // TODO never write relative pathes in include
+                                                // just leave it as `#include "afl-fuzz.h"` and use -I compiler option
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -6,7 +7,7 @@
 #include <stdio.h>
 #include "png_gen_lib.h"
 
-const int  DATA_SIZE = 10000;
+const int  DATA_SIZE = 10000; // TODO make it static. Avoid global constants
 
 typedef struct my_mutator {
 
@@ -42,7 +43,7 @@ my_mutator_t * afl_custom_init(afl_state_t *afl, unsigned int seed) {
         return NULL;
     }
 
-    if ((data->mutated_out = (u8 *)malloc(MAX_FILE)) == NULL) {
+    if ((data->mutated_out = (u8 *)malloc(MAX_FILE)) == NULL) { // TODO its better to write function / define to check errors instead of copy-pasting
         perror("afl_custom_init malloc");
         return NULL;
     }
@@ -62,7 +63,7 @@ my_mutator_t * afl_custom_init(afl_state_t *afl, unsigned int seed) {
     return data;
 }
 
-/**
+/** // TODO either remove this or write docstrings to every function
  * Perform custom mutations on a given input
  *
  * (Optional for now. Required in the future)
@@ -89,7 +90,7 @@ size_t afl_custom_fuzz(my_mutator_t * data, uint8_t * buf, size_t buf_size,
 
     make_png(&(data->buffer));
     if (max_size < data->buffer.len) {
-
+        // TODO formatting. Remove empty lines in the begin of `if-body` and add them before `if`
         memcpy(data->mutated_out, data->buffer.data, max_size);
         mutated_size = max_size;
     } else {
