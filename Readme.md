@@ -167,3 +167,19 @@ https://habr.com/ru/companies/ruvds/articles/787302/
 
 http://www.libpng.org/pub/png/spec/1.2/PNG-CRCAppendix.html
 
+
+TODO:
+
+add -I option
+make define for checks
+formatting check
+
+DONE:
+
+added a target to compile custom mutation
+made static const 
+made defines for checks
+deleted comments with doc
+if formatting fix 
+crc is now static
+
