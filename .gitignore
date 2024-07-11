@@ -11,3 +11,4 @@ png_n.o.dSYM
 savemain.c
 example.so
 txt.png
+.cache
